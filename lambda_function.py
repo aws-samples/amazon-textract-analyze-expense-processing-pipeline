@@ -1,5 +1,5 @@
 """
-Author: manchugh@amazon.com
+Author: Manish Chugh
 
 Lambda function for Amazon Textract AnalyzeExpense to help analyze expenses.This
 function listens to s3 event notifications of every image upload to source s3
