@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: TextractAnalyzeExpense
+
+
+Resources:
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: LoggingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AWSCloudTrailAclCheck"
+            Effect: "Allow"
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${LoggingBucket}
+          -
+            Sid: "AWSCloudTrailWrite"
+            Effect: "Allow"
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: "bucket-owner-full-control"
+
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      AccessControl: BucketOwnerFullControl
+      LifecycleConfiguration:
+        Rules:
+          -
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 3
+            NoncurrentVersionExpirationInDays: 3
+            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        -
+          Key: Description
+          Value: Textract AnalyzeExpense Demo Bucket
+      VersioningConfiguration:
+        Status: Enabled
+
+
+  LoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      AccessControl: BucketOwnerFullControl
+      LifecycleConfiguration:
+        Rules:
+          -
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 3
+            NoncurrentVersionExpirationInDays: 3
+            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        -
+          Key: Description
+          Value: Textract AnalyzeExpense Demo Bucket for CloudTrail and EventBridge Integration with Amazon S3 and AWS Lambda
+      VersioningConfiguration:
+        Status: Enabled
+
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      AccessControl: BucketOwnerFullControl
+      LifecycleConfiguration:
+        Rules:
+          -
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 3
+            NoncurrentVersionExpirationInDays: 3
+            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        -
+          Key: Description
+          Value: Textract AnalyzeExpense Demo Bucket for storing the Outputs
+      VersioningConfiguration:
+        Status: Enabled
+
+
+  EventCloudTrail:
+      Type: AWS::CloudTrail::Trail
+      DependsOn:
+        - CloudTrailBucketPolicy
+      Properties:
+        TrailName: !Ref LoggingBucket
+        S3BucketName:
+          Ref: LoggingBucket
+        IsLogging: true
+        IsMultiRegionTrail: false
+        EventSelectors:
+          - IncludeManagementEvents: false
+            DataResources:
+            - Type: AWS::S3::Object
+              Values:
+               - !Sub |-
+                  arn:aws:s3:::${SourceBucket}/
+        IncludeGlobalServiceEvents: false
+
+  AWSLambdaAnalyzeExpenseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ '', [ !Ref 'AWS::StackName', 'textractanalyzeexpense-lambda-role' ]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - textract.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonTextractFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+        - !Ref LambdaPolicy
+
+  LambdaPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Join [ '', [ !Ref 'AWS::StackName', 'textractanalyzeexpense-lambda-policy' ]]
+      Description: 'Managed policy for lambdas'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:PutObject*"
+              - "s3:GetBucket*"
+              - "s3:GetObject*"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${SourceBucket}:/*
+          - Effect: "Allow"
+            Action:
+              - "s3:PutObject*"
+              - "s3:GetBucket*"
+              - "s3:GetObject*"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${OutputBucket}:/*
+
+  EventConsumerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: my-source-bucket
+        S3Key: archive.zip
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.7
+      Timeout: 20
+      Environment:
+        Variables:
+          outputs3bucketname: !Sub ${OutputBucket}
+      Role:
+        Fn::GetAtt:
+          - AWSLambdaAnalyzeExpenseRole
+          - Arn
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "EventRule"
+      State: "ENABLED"
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "s3.amazonaws.com"
+          eventName:
+            - "PutObject"
+          requestParameters:
+            bucketName:
+              - !Ref SourceBucket
+      Targets:
+        -
+          Arn:
+            Fn::GetAtt:
+              - "EventConsumerFunction"
+              - "Arn"
+          Id: "EventConsumerFunctionTarget"
+
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: "EventConsumerFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "EventRule"
+          - "Arn"
