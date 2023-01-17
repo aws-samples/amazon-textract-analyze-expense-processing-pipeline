@@ -61,6 +61,23 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  SourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SourceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt SourceBucket.Arn
+              - !Sub "${SourceBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
 
   LoggingBucket:
     Type: AWS::S3::Bucket
@@ -89,6 +106,24 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  LoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LoggingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt LoggingBucket.Arn
+              - !Sub "${LoggingBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
+
   OutputBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -116,6 +151,23 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  OutputBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OutputBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt OutputBucket.Arn
+              - !Sub "${OutputBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
 
   EventCloudTrail:
       Type: AWS::CloudTrail::Trail
