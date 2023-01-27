@@ -33,6 +33,16 @@ Resources:
             Condition:
               StringEquals:
                 s3:x-amz-acl: "bucket-owner-full-control"
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt LoggingBucket.Arn
+              - !Sub "${LoggingBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
 
   SourceBucket:
     Type: AWS::S3::Bucket
@@ -105,24 +115,6 @@ Resources:
           Value: Textract AnalyzeExpense Demo Bucket for CloudTrail and EventBridge Integration with Amazon S3 and AWS Lambda
       VersioningConfiguration:
         Status: Enabled
-
-  LoggingBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref LoggingBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowSSLRequestsOnly
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !GetAtt LoggingBucket.Arn
-              - !Sub "${LoggingBucket.Arn}/*"
-            Condition:
-              Bool:
-                "aws:SecureTransport": false
 
   OutputBucket:
     Type: AWS::S3::Bucket
