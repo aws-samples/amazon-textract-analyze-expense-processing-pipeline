@@ -232,7 +232,7 @@ Resources:
         S3Bucket: my-source-bucket
         S3Key: archive.zip
       Handler: lambda_function.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.12
       Timeout: 20
       Environment:
         Variables:
