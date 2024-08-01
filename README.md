@@ -57,7 +57,7 @@ aws cloudformation deploy --template-file template.yaml --stack-name myTextractA
 Alternatively, deploy this solution in `us-east-1` using a pre-configured CloudFormation template -
 1.	Choose Launch Stack to configure the notebook in the US East (N. Virginia) Region:
 
-[![cfnlaunchstack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=textract-analyzexpense&templateURL=https://aws-ml-blog.s3.amazonaws.com/artifacts/analyze-expense-documents-textract/Textract-Analyze-Expense-Demo.yaml)
+[![cfnlaunchstack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=textract-analyzexpense-demo&templateURL=https://aws-blogs-artifacts-public.s3.amazonaws.com/artifacts/ML-3911/Textract-Analyze-Expense-Demo.yaml)
 
 2. Don’t make any changes to stack name or parameters.
 3. In the Capabilities section, select I acknowledge that AWS CloudFormation might create IAM resources.
