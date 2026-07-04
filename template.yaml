@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: TextractAnalyzeExpense
 
-
 Resources:
   CloudTrailBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -33,16 +32,55 @@ Resources:
             Condition:
               StringEquals:
                 s3:x-amz-acl: "bucket-owner-full-control"
-          - Sid: AllowSSLRequestsOnly
-            Effect: Deny
+          -
+            Sid: "DenyNonSecureTransport"
+            Effect: "Deny"
             Principal: "*"
             Action: "s3:*"
             Resource:
-              - !GetAtt LoggingBucket.Arn
-              - !Sub "${LoggingBucket.Arn}/*"
+              - !Sub "arn:aws:s3:::${LoggingBucket}"
+              - !Sub "arn:aws:s3:::${LoggingBucket}/*"
             Condition:
               Bool:
-                "aws:SecureTransport": false
+                aws:SecureTransport: "false"
+
+  SourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SourceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "DenyNonSecureTransport"
+            Effect: "Deny"
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt SourceBucket.Arn
+              - !Sub "${SourceBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  OutputBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OutputBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "DenyNonSecureTransport"
+            Effect: "Deny"
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt OutputBucket.Arn
+              - !Sub "${OutputBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
 
   SourceBucket:
     Type: AWS::S3::Bucket
@@ -70,24 +108,6 @@ Resources:
           Value: Textract AnalyzeExpense Demo Bucket
       VersioningConfiguration:
         Status: Enabled
-
-  SourceBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref SourceBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowSSLRequestsOnly
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !GetAtt SourceBucket.Arn
-              - !Sub "${SourceBucket.Arn}/*"
-            Condition:
-              Bool:
-                "aws:SecureTransport": false
 
   LoggingBucket:
     Type: AWS::S3::Bucket
@@ -143,42 +163,24 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  OutputBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref OutputBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowSSLRequestsOnly
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !GetAtt OutputBucket.Arn
-              - !Sub "${OutputBucket.Arn}/*"
-            Condition:
-              Bool:
-                "aws:SecureTransport": false
-
   EventCloudTrail:
-      Type: AWS::CloudTrail::Trail
-      DependsOn:
-        - CloudTrailBucketPolicy
-      Properties:
-        TrailName: !Ref LoggingBucket
-        S3BucketName:
-          Ref: LoggingBucket
-        IsLogging: true
-        IsMultiRegionTrail: false
-        EventSelectors:
-          - IncludeManagementEvents: false
-            DataResources:
+    Type: AWS::CloudTrail::Trail
+    DependsOn:
+      - CloudTrailBucketPolicy
+    Properties:
+      TrailName: !Ref LoggingBucket
+      S3BucketName:
+        Ref: LoggingBucket
+      IsLogging: true
+      IsMultiRegionTrail: false
+      EventSelectors:
+        - IncludeManagementEvents: false
+          DataResources:
             - Type: AWS::S3::Object
               Values:
-               - !Sub |-
-                  arn:aws:s3:::${SourceBucket}/
-        IncludeGlobalServiceEvents: false
+                - !Sub |-
+                    arn:aws:s3:::${SourceBucket}/
+      IncludeGlobalServiceEvents: false
 
   AWSLambdaAnalyzeExpenseRole:
     Type: AWS::IAM::Role
